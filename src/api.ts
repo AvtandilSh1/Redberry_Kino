@@ -1,16 +1,36 @@
 import { readToken } from './session'
-import type { AuthPayload, Movie, MovieListResponse, User } from './types'
+import type {
+  AuthPayload,
+  FilterOptions,
+  Movie,
+  MovieDetail,
+  MovieListResponse,
+  Order,
+  SeatHold,
+  SeatMap,
+  SessionDetail,
+  SessionsResponse,
+  User,
+  VenueSessionGroup,
+} from './types'
 
 const API_URL = 'https://api.kinoxii.redberryinternship.ge/api'
 
 export class ApiError extends Error {
   status: number
   fieldErrors: Record<string, string>
+  contested: string[]
 
-  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(
+    status: number,
+    message: string,
+    fieldErrors: Record<string, string> = {},
+    contested: string[] = [],
+  ) {
     super(message)
     this.status = status
     this.fieldErrors = fieldErrors
+    this.contested = contested
   }
 }
 
@@ -26,11 +46,14 @@ async function readError(response: Response) {
     const body = (await response.json()) as {
       message?: string
       errors?: Record<string, string[]>
+      contested?: string[]
     }
     if (body.message) message = body.message
     for (const [key, messages] of Object.entries(body.errors ?? {})) {
       if (messages[0]) fieldErrors[key] = messages[0]
     }
+    const contested = Array.isArray(body.contested) ? body.contested.filter((code) => typeof code === 'string') : []
+    return new ApiError(response.status, message, fieldErrors, contested)
   } catch {
     // Some failures return an empty body.
   }
@@ -55,6 +78,23 @@ export function getNowPlaying(limit = 8) {
 
 export function getComingSoon() {
   return getJson<MovieListResponse>('/movies/coming-soon')
+}
+
+export function getMovie(slug: string) {
+  return getJson<{ data: MovieDetail }>(`/movies/${encodeURIComponent(slug)}`)
+}
+
+export function getMovieSessions(slug: string, date: string) {
+  const params = new URLSearchParams({ date })
+  return getJson<{ data: VenueSessionGroup[] }>(`/movies/${encodeURIComponent(slug)}/sessions?${params.toString()}`)
+}
+
+export function getFilterOptions() {
+  return getJson<{ data: FilterOptions }>('/filter-options')
+}
+
+export function getSessions(query: URLSearchParams) {
+  return getJson<SessionsResponse>(`/sessions?${query.toString()}`)
 }
 
 export function searchMovies(query: string) {
@@ -118,6 +158,87 @@ export async function notifyMovie(slug: string) {
     headers: { Accept: 'application/json', ...authHeader() },
   })
   if (!response.ok) throw await readError(response)
+}
+
+export function getSession(sessionId: number) {
+  return getJson<{ data: SessionDetail }>(`/sessions/${sessionId}`)
+}
+
+export function getSeatMap(sessionId: number) {
+  return getJson<{ data: SeatMap }>(`/sessions/${sessionId}/seats`)
+}
+
+export async function createHold(sessionId: number, seats: { seatId: number; ticketType: string }[]) {
+  const response = await fetch(`${API_URL}/sessions/${sessionId}/holds`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ seats }),
+  })
+  if (!response.ok) throw await readError(response)
+  return response.json() as Promise<{ data: SeatHold }>
+}
+
+export function getHold(holdId: string) {
+  return getJson<{ data: SeatHold }>(`/holds/${holdId}`)
+}
+
+export async function releaseHold(holdId: string) {
+  const response = await fetch(`${API_URL}/holds/${holdId}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', ...authHeader() },
+  })
+  if (!response.ok && response.status !== 404) throw await readError(response)
+}
+
+export async function updateProfile(input: {
+  fullName: string
+  mobileNumber: string
+  dateOfBirth: string
+  preferredVenueId: string
+}) {
+  const body = new FormData()
+  body.append('fullName', input.fullName)
+  body.append('mobileNumber', input.mobileNumber)
+  body.append('dateOfBirth', input.dateOfBirth)
+  body.append('preferredVenueId', input.preferredVenueId)
+  const response = await fetch(`${API_URL}/profile`, {
+    method: 'PUT',
+    headers: { Accept: 'application/json', ...authHeader() },
+    body,
+  })
+  if (!response.ok) throw await readError(response)
+  return response.json() as Promise<{ data: User }>
+}
+
+export function getTickets(filter: 'upcoming' | 'past') {
+  return getJson<{ data: Order[] }>(`/tickets?filter=${filter}`)
+}
+
+export async function refundOrder(reference: string) {
+  const response = await fetch(`${API_URL}/orders/${encodeURIComponent(reference)}/refund`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...authHeader() },
+  })
+  if (!response.ok) throw await readError(response)
+  return response.json() as Promise<{ data: Order }>
+}
+
+export async function createOrder(input: {
+  holdId: string
+  fullName: string
+  email: string
+  mobileNumber: string
+  cardNumber: string
+  expiry: string
+  cvv: string
+}) {
+  const response = await fetch(`${API_URL}/orders`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) throw await readError(response)
+  return response.json() as Promise<{ data: Order }>
 }
 
 export type { Movie }

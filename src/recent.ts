@@ -13,6 +13,7 @@ export type RecentMovie = {
   isComingSoon: boolean
   ageCode: string
   ageDescription: string
+  genre?: string
 }
 
 export function readRecent(): RecentMovie[] {
@@ -37,6 +38,7 @@ export function toRecent(movie: Movie): RecentMovie {
     isComingSoon: movie.isComingSoon,
     ageCode: movie.ageRating.code,
     ageDescription: movie.ageRating.description,
+    genre: movie.genres[0]?.name,
   }
 }
 

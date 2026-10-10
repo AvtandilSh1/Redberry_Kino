@@ -20,6 +20,7 @@ type AuthContextValue = {
     avatar: File | null
   }) => Promise<void>
   logout: () => Promise<void>
+  updateUser: (user: User) => void
   requireAuth: (action: () => Promise<void> | void) => void
 }
 
@@ -80,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [finish],
   )
 
+  const updateUser = useCallback((next: User) => setUser(next), [])
+
   const logout = useCallback(async () => {
     try {
       await logoutRequest()
@@ -109,8 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ user, ready, mode, openAuth, closeAuth, login, register, logout, requireAuth }),
-    [user, ready, mode, openAuth, closeAuth, login, register, logout, requireAuth],
+    () => ({ user, ready, mode, openAuth, closeAuth, login, register, logout, updateUser, requireAuth }),
+    [user, ready, mode, openAuth, closeAuth, login, register, logout, updateUser, requireAuth],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
