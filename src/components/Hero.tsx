@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { formatPrice, formatRuntime } from '../format'
+import { formatDayMonth, formatMinutes } from '../format'
 import { rememberMovie, toRecent } from '../recent'
 import type { Movie } from '../types'
-import { AgeBadge } from './AgeBadge'
+import { ChevronLeft, ChevronRight, TicketIcon, TimerIcon } from './Icons'
 
 const ROTATE_MS = 6500
+const DAY_MS = 86_400_000
 
 type HeroProps = {
   movies: Movie[]
+}
+
+function eyebrow(movie: Movie) {
+  const released = new Date(`${movie.releaseDate}T00:00:00`).getTime()
+  if (movie.isComingSoon) return `Coming soon · ${formatDayMonth(movie.releaseDate, 'short')}`
+  if (Date.now() - released < 30 * DAY_MS) return `Premiere · Week of ${formatDayMonth(movie.releaseDate, 'short')}`
+  return 'Now showing'
 }
 
 export function Hero({ movies }: HeroProps) {
@@ -17,15 +25,16 @@ export function Hero({ movies }: HeroProps) {
 
   useEffect(() => {
     if (movies.length < 2 || paused) return
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
       setIndex((current) => (current + 1) % movies.length)
     }, ROTATE_MS)
-    return () => window.clearInterval(timer)
-  }, [movies.length, paused])
+    return () => window.clearTimeout(timer)
+  }, [movies.length, paused, index])
 
   if (movies.length === 0) return null
 
   const active = movies[index] ?? movies[0]
+  const step = (delta: number) => setIndex((current) => (current + delta + movies.length) % movies.length)
 
   return (
     <section
@@ -39,49 +48,57 @@ export function Hero({ movies }: HeroProps) {
         <div className="hero-shade" />
       </div>
 
-      <div className="hero-content">
-        <div className="hero-copy">
-          <p className="eyebrow">Featured</p>
-          <h1>{active.title}</h1>
-          {active.synopsis && <p className="hero-synopsis">{active.synopsis}</p>}
-          <div className="meta-row">
-            <AgeBadge code={active.ageRating.code} description={active.ageRating.description} />
-            <span>{formatRuntime(active.runtimeMinutes)}</span>
-            <span>from {formatPrice(active.fromPrice)}</span>
-            {active.genres.slice(0, 2).map((genre) => (
-              <span key={genre.id} className="chip">
-                {genre.name}
-              </span>
-            ))}
-          </div>
-          <Link
-            className="btn btn-solid btn-lg"
-            to={`/movies/${active.slug}`}
-            onClick={() => rememberMovie(toRecent(active))}
-          >
-            Buy Ticket
+      <div className="hero-body" key={`copy-${active.slug}`}>
+        <p className="hero-eyebrow">{eyebrow(active)}</p>
+        <h1>{active.title}</h1>
+        <div className="hero-tags">
+          <span className="tag tag-red" title={active.ageRating.description}>
+            {active.ageRating.code}
+          </span>
+          <span className="tag">
+            <TimerIcon size={14} />
+            {formatMinutes(active.runtimeMinutes)}
+          </span>
+          {active.formats.slice(0, 3).map((format) => (
+            <span key={format.id} className="tag">
+              {format.name}
+            </span>
+          ))}
+        </div>
+        {active.synopsis && <p className="hero-synopsis">{active.synopsis}</p>}
+        <div className="hero-actions">
+          <Link className="btn btn-solid" to={`/movies/${active.slug}`} onClick={() => rememberMovie(toRecent(active))}>
+            <TicketIcon size={16} />
+            Buy tickets
+          </Link>
+          <Link className="btn btn-glass" to="/sessions">
+            All sessions
           </Link>
         </div>
+      </div>
 
-        <div className="hero-posters" role="tablist" aria-label="Featured previews">
-          {movies.map((movie, movieIndex) => {
-            const selected = movieIndex === index
-            return (
-              <button
-                key={movie.slug}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={selected ? 'hero-poster is-active' : 'hero-poster'}
-                onClick={() => setIndex(movieIndex)}
-              >
-                <img src={movie.posterUrl} alt={movie.title} />
-                <span className="hero-poster-title">{movie.title}</span>
-                {selected && <span className="hero-progress" style={{ animationDuration: `${ROTATE_MS}ms` }} />}
-              </button>
-            )
-          })}
+      <div className="hero-bar">
+        <div className="hero-steps" role="tablist" aria-label="Featured films">
+          {movies.map((movie, movieIndex) => (
+            <button
+              key={movie.slug}
+              type="button"
+              role="tab"
+              aria-selected={movieIndex === index}
+              aria-label={movie.title}
+              className={movieIndex === index ? 'hero-step is-active' : 'hero-step'}
+              onClick={() => setIndex(movieIndex)}
+            >
+              {movieIndex === index && <span style={{ animationDuration: `${ROTATE_MS}ms` }} />}
+            </button>
+          ))}
         </div>
+        <button type="button" className="round-button" aria-label="Previous film" onClick={() => step(-1)}>
+          <ChevronLeft size={20} />
+        </button>
+        <button type="button" className="round-button" aria-label="Next film" onClick={() => step(1)}>
+          <ChevronRight size={20} />
+        </button>
       </div>
     </section>
   )

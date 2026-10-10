@@ -1,6 +1,8 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { ApiError } from '../api'
 import { useAuth } from '../auth'
+import { FieldMark } from './FieldMark'
+import { CloseIcon, UploadIcon } from './Icons'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
@@ -197,28 +199,54 @@ function AuthDialog({
   }
 
   const title = mode === 'login' ? 'Log in' : 'Sign up'
+  const missing =
+    !values.email.trim() ||
+    !values.password ||
+    (mode === 'signup' && (!values.username.trim() || !values.confirmPassword))
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div
-        className="modal"
+        className={mode === 'login' ? 'modal auth-modal' : 'modal auth-modal is-wide'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="modal-head">
-          <h2 id={titleId}>{title}</h2>
+          <div>
+            <h2 id={titleId}>{title}</h2>
+            <p className="modal-sub">{mode === 'login' ? 'Welcome back to Kino XII' : 'Welcome to Kino XII'}</p>
+          </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close">
-            ×
+            <CloseIcon size={20} />
           </button>
         </div>
 
         <form onSubmit={onSubmit} noValidate>
           {mode === 'signup' && (
+            <div className="avatar-field">
+              <label className={message('avatar') ? 'avatar-picker is-invalid' : 'avatar-picker'}>
+                {avatarPreview ? <img src={avatarPreview} alt="Avatar preview" /> : <UploadIcon size={16} />}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={submitting}
+                  onChange={(event) => onAvatar(event.target.files?.[0])}
+                />
+              </label>
+              <span>
+                <strong>Upload avatar (optional)</strong>
+                <small>JPG, PNG or WEBP</small>
+              </span>
+              {message('avatar') && <small className="avatar-error">{message('avatar')}</small>}
+            </div>
+          )}
+          {mode === 'signup' && (
             <Field
               label="Username"
               name="username"
+              placeholder="User"
               value={values.username}
               tone={tone('username')}
               error={message('username')}
@@ -231,6 +259,7 @@ function AuthDialog({
             label="Email"
             name="email"
             type="email"
+            placeholder="example@gmail.com"
             value={values.email}
             tone={tone('email')}
             error={message('email')}
@@ -238,61 +267,48 @@ function AuthDialog({
             onBlur={() => setTouched((current) => ({ ...current, email: true }))}
             onChange={(value) => update('email', value)}
           />
-          <Field
-            label="Password"
-            name="password"
-            type="password"
-            value={values.password}
-            tone={tone('password')}
-            error={message('password')}
-            disabled={submitting}
-            onBlur={() => setTouched((current) => ({ ...current, password: true }))}
-            onChange={(value) => update('password', value)}
-          />
-          {mode === 'signup' && (
+          <div className={mode === 'signup' ? 'field-pair' : 'field-single'}>
             <Field
-              label="Confirm password"
-              name="confirmPassword"
+              label="Password"
+              name="password"
               type="password"
-              value={values.confirmPassword}
-              tone={tone('confirmPassword')}
-              error={message('confirmPassword')}
+              placeholder="••••••••"
+              value={values.password}
+              tone={tone('password')}
+              error={message('password')}
               disabled={submitting}
-              onBlur={() => setTouched((current) => ({ ...current, confirmPassword: true }))}
-              onChange={(value) => update('confirmPassword', value)}
+              onBlur={() => setTouched((current) => ({ ...current, password: true }))}
+              onChange={(value) => update('password', value)}
             />
-          )}
-          {mode === 'signup' && (
-            <div className={`field ${message('avatar') ? 'is-invalid' : avatar ? 'is-valid' : ''}`}>
-              <span>Avatar</span>
-              <label className="avatar-picker">
-                {avatarPreview ? <img src={avatarPreview} alt="" /> : <span>Optional</span>}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  disabled={submitting}
-                  onChange={(event) => onAvatar(event.target.files?.[0])}
-                />
-              </label>
-              {message('avatar') && <small>{message('avatar')}</small>}
-            </div>
-          )}
+            {mode === 'signup' && (
+              <Field
+                label="Confirm password"
+                name="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={values.confirmPassword}
+                tone={tone('confirmPassword')}
+                error={message('confirmPassword')}
+                disabled={submitting}
+                onBlur={() => setTouched((current) => ({ ...current, confirmPassword: true }))}
+                onChange={(value) => update('confirmPassword', value)}
+              />
+            )}
+          </div>
 
           {formError && <p className="form-error">{formError}</p>}
 
-          <button type="submit" className="btn btn-solid btn-block" disabled={submitting}>
+          <button type="submit" className="btn btn-solid btn-block auth-submit" disabled={submitting || missing}>
             {submitting ? 'Please wait…' : title}
           </button>
         </form>
 
-        <div className="modal-foot">
-          <button type="button" className="text-button" onClick={onSwitch} disabled={submitting}>
-            {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+        <p className="auth-switch">
+          {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+          <button type="button" onClick={onSwitch} disabled={submitting}>
+            {mode === 'login' ? 'Sign up' : 'Log in'}
           </button>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Close
-          </button>
-        </div>
+        </p>
       </div>
     </div>
   )
@@ -306,6 +322,7 @@ function Field({
   error,
   disabled,
   type = 'text',
+  placeholder,
   onBlur,
   onChange,
 }: {
@@ -316,6 +333,7 @@ function Field({
   error: string
   disabled: boolean
   type?: string
+  placeholder?: string
   onBlur: () => void
   onChange: (value: string) => void
 }) {
@@ -323,18 +341,21 @@ function Field({
   return (
     <label className={`field ${tone}`} htmlFor={id}>
       <span>{label}</span>
-      <input
-        id={id}
-        name={name}
-        type={type}
-        value={value}
-        disabled={disabled}
-        autoComplete={name === 'confirmPassword' ? 'new-password' : name}
-        aria-invalid={Boolean(error)}
-        onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {tone === 'is-valid' && <em className="field-mark">✓</em>}
+      <span className="field-control">
+        <input
+          id={id}
+          name={name}
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          disabled={disabled}
+          autoComplete={name === 'confirmPassword' ? 'new-password' : name}
+          aria-invalid={Boolean(error)}
+          onBlur={onBlur}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <FieldMark tone={tone} />
+      </span>
       {error && <small>{error}</small>}
     </label>
   )

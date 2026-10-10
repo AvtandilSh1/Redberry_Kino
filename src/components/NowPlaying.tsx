@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { formatPrice, formatRuntime } from '../format'
+import { formatPrice, genreLine } from '../format'
 import { rememberMovie, toRecent } from '../recent'
 import type { Movie } from '../types'
 import { AgeBadge } from './AgeBadge'
@@ -14,7 +14,7 @@ export function NowPlaying({ movies }: NowPlayingProps) {
       <div className="band-head">
         <h2 id="now-heading">Now Playing</h2>
         <Link to="/sessions" className="see-all">
-          See All
+          See all
         </Link>
       </div>
       {movies.length === 0 ? (
@@ -24,23 +24,21 @@ export function NowPlaying({ movies }: NowPlayingProps) {
       ) : (
         <div className="card-row">
           {movies.map((movie) => (
-            <article className="film-card" key={movie.slug}>
-              <Link to={`/movies/${movie.slug}`} onClick={() => rememberMovie(toRecent(movie))}>
+            <article className="poster-card" key={movie.slug}>
+              <Link to={`/movies/${movie.slug}`} className="poster-card-image" onClick={() => rememberMovie(toRecent(movie))}>
                 <img src={movie.posterUrl} alt={`${movie.title} poster`} />
               </Link>
-              <div className="film-card-body">
-                <h3>
-                  <Link to={`/movies/${movie.slug}`} onClick={() => rememberMovie(toRecent(movie))}>
-                    {movie.title}
-                  </Link>
-                </h3>
-                <div className="meta-row compact">
-                  <AgeBadge code={movie.ageRating.code} description={movie.ageRating.description} />
-                  <span>{formatRuntime(movie.runtimeMinutes)}</span>
-                </div>
-                <p className="price">from {formatPrice(movie.fromPrice)}</p>
+              <h3>
+                <Link to={`/movies/${movie.slug}`} onClick={() => rememberMovie(toRecent(movie))}>
+                  {movie.title}
+                </Link>
+              </h3>
+              <p className="card-meta">{genreLine(movie.genres, movie.runtimeMinutes)}</p>
+              <AgeBadge code={movie.ageRating.code} description={movie.ageRating.description} />
+              <div className="poster-card-foot">
+                <span>From {formatPrice(movie.fromPrice)}</span>
                 <Link
-                  className="btn btn-solid btn-block"
+                  className="btn btn-solid btn-sm"
                   to={`/movies/${movie.slug}`}
                   onClick={() => rememberMovie(toRecent(movie))}
                 >
