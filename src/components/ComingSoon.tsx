@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ApiError, notifyMovie } from '../api'
+import { useAuth } from '../auth'
 import { formatReleaseDate, formatRuntime } from '../format'
 import { rememberMovie, toRecent } from '../recent'
 import type { Movie } from '../types'
@@ -10,7 +12,10 @@ type ComingSoonProps = {
 }
 
 export function ComingSoon({ movies }: ComingSoonProps) {
+  const { requireAuth } = useAuth()
   const [notice, setNotice] = useState('')
+  const [notified, setNotified] = useState<Record<string, boolean>>({})
+  const [pendingSlug, setPendingSlug] = useState('')
 
   return (
     <section className="band" aria-labelledby="soon-heading">
@@ -43,11 +48,24 @@ export function ComingSoon({ movies }: ComingSoonProps) {
                 <button
                   type="button"
                   className="btn btn-ghost btn-block"
-                  onClick={() =>
-                    setNotice('Log in to get notified when this film is released.')
-                  }
+                  disabled={Boolean(notified[movie.slug] || movie.isNotified) || pendingSlug === movie.slug}
+                  onClick={() => {
+                    requireAuth(async () => {
+                      setPendingSlug(movie.slug)
+                      try {
+                        await notifyMovie(movie.slug)
+                        setNotified((current) => ({ ...current, [movie.slug]: true }))
+                        setNotice('')
+                      } catch (error) {
+                        if (error instanceof ApiError && error.status === 401) throw error
+                        setNotice(error instanceof Error ? error.message : 'Could not save the notification.')
+                      } finally {
+                        setPendingSlug('')
+                      }
+                    })
+                  }}
                 >
-                  Notify Me
+                  {notified[movie.slug] || movie.isNotified ? 'Notified' : 'Notify Me'}
                 </button>
               </div>
             </article>
