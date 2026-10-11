@@ -1,9 +1,13 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth'
 import { AuthModal } from './components/AuthModal'
+import { Footer } from './components/Footer'
 import { Header } from './components/Header'
+import { BookingPage } from './pages/BookingPage'
 import { HomePage } from './pages/HomePage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { MoviePage } from './pages/MoviePage'
+import { ProfilePage } from './pages/ProfilePage'
+import { SessionsPage } from './pages/SessionsPage'
 
 export default function App() {
   return (
@@ -14,34 +18,12 @@ export default function App() {
         <AuthModal />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route
-            path="/sessions"
-            element={
-              <PlaceholderPage
-                title="Sessions"
-                body="Filters, search, and sorting for showtimes come in the next step."
-              />
-            }
-          />
-          <Route
-            path="/movies/:slug"
-            element={
-              <PlaceholderPage
-                title="Film details"
-                body="The film page, with showtimes, is the section after this home page."
-              />
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <PlaceholderPage
-                title="My Profile"
-                body="Personal details and your tickets are the profile section, which comes after the booking flow."
-              />
-            }
-          />
+          <Route path="/sessions" element={<SessionsPage />} />
+          <Route path="/sessions/:sessionId/seats" element={<BookingPage />} />
+          <Route path="/movies/:slug" element={<MoviePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
+        <Footer />
       </div>
       </AuthProvider>
     </BrowserRouter>
