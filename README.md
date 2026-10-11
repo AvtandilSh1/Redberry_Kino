@@ -1,5 +1,7 @@
 # Kino XII
 
+
+**Live site:** https://coruscating-froyo-5b8dba.netlify.app
 A cinema website built for the Redberry Bootcamp XII assignment. Browse films and showtimes across Tbilisi and Batumi venues, pick seats, pay, and manage your tickets.
 
 The frontend talks to the official Kino XII API at `https://api.kinoxii.redberryinternship.ge/api`. The design follows the provided Figma file.
